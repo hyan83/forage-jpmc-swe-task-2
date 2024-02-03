@@ -8,6 +8,8 @@ import './App.css';
  */
 interface IState {
   data: ServerRespond[],
+  showGraph: boolean,
+  fetchingData: boolean,
 }
 
 /**
@@ -22,26 +24,50 @@ class App extends Component<{}, IState> {
       // data saves the server responds.
       // We use this state to parse data down to the child element (Graph) as element property
       data: [],
+      showGraph: false,
+      fetchingData: true,
     };
+  }
+
+  stopDataStreaming() {
+      // Set the component state to stop fetching data
+      this.setState({ fetchingData: false });
   }
 
   /**
    * Render Graph react component with state.data parse as property data
    */
   renderGraph() {
-    return (<Graph data={this.state.data}/>)
+    if (this.state.showGraph) {
+        return (<Graph data={this.state.data}/>)
+    }
   }
-
   /**
    * Get new data from server and update the state with the new data
    */
-  getDataFromServer() {
-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
-      // Update the state by creating a new array of data that consists of
-      // Previous data in the state and the new data from server
-      this.setState({ data: [...this.state.data, ...serverResponds] });
-    });
-  }
+   getDataFromServer() {
+       // Boolean to control fetchData
+       this.setState({ fetchingData: true })
+       // Function to fetch data from server
+       const fetchData = () => {
+           if (!this.state.fetchingData) {
+                return; // Stop fetching data if fetchingData is False
+           }
+           DataStreamer.getData((serverResponds: ServerRespond[]) => {
+               // Update the state by creating a new array of data that consists of
+               // Previous data in the state and the new data from server
+               this.setState({
+                    data: serverResponds,
+                    showGraph: true
+               });
+               // Call fetchData again after 100ms
+               setTimeout(fetchData, 100);
+           });
+       };
+
+       // Call fetchData for the first time
+       fetchData();
+   }
 
   /**
    * Render the App react component
@@ -61,6 +87,11 @@ class App extends Component<{}, IState> {
             // or the server does not return anymore data.
             onClick={() => {this.getDataFromServer()}}>
             Start Streaming Data
+          </button>
+            <button className="btn btn-danger Stop-button"
+            // Added an extra button to stop the stream instead of closing the browser window
+            onClick={() => {this.stopDataStreaming()}}>
+            Stop Streaming Data
           </button>
           <div className="Graph">
             {this.renderGraph()}
